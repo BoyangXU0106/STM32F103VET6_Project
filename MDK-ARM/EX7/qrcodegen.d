@@ -1,0 +1,16 @@
+ex7\qrcodegen.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\qrcode\qrcodegen.c
+ex7\qrcodegen.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\limits.h
+ex7\qrcodegen.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+ex7\qrcodegen.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+ex7\qrcodegen.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\qrcode\qrcodegen.h
+ex7\qrcodegen.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+ex7\qrcodegen.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+ex7\qrcodegen.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+ex7\qrcodegen.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\qrcode\../../../misc/lv_assert.h
+ex7\qrcodegen.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\qrcode\../../../misc/../lv_conf_internal.h
+ex7\qrcodegen.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\qrcode\../../../misc/../lv_conf_kconfig.h
+ex7\qrcodegen.o: ../Middlewares/Third_Party/lvgl/examples/porting/../../lv_conf.h
+ex7\qrcodegen.o: ../mycodeh/screen_config.h
+ex7\qrcodegen.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\qrcode\../../../misc/lv_log.h
+ex7\qrcodegen.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\qrcode\../../../misc/lv_types.h
+ex7\qrcodegen.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\qrcode\../../../misc/lv_mem.h

@@ -1,0 +1,14 @@
+ex7\lv_async.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_async.c
+ex7\lv_async.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_async.h
+ex7\lv_async.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_types.h
+ex7\lv_async.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+ex7\lv_async.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_mem.h
+ex7\lv_async.o: ..\Middlewares\Third_Party\lvgl\src\misc\../lv_conf_internal.h
+ex7\lv_async.o: ..\Middlewares\Third_Party\lvgl\src\misc\../lv_conf_kconfig.h
+ex7\lv_async.o: ../Middlewares/Third_Party/lvgl/examples/porting/../../lv_conf.h
+ex7\lv_async.o: ../mycodeh/screen_config.h
+ex7\lv_async.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+ex7\lv_async.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+ex7\lv_async.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_timer.h
+ex7\lv_async.o: ..\Middlewares\Third_Party\lvgl\src\misc\../hal/lv_hal_tick.h
+ex7\lv_async.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h

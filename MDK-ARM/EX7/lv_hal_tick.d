@@ -1,0 +1,9 @@
+ex7\lv_hal_tick.o: ..\Middlewares\Third_Party\lvgl\src\hal\lv_hal_tick.c
+ex7\lv_hal_tick.o: ..\Middlewares\Third_Party\lvgl\src\hal\lv_hal_tick.h
+ex7\lv_hal_tick.o: ..\Middlewares\Third_Party\lvgl\src\hal\../lv_conf_internal.h
+ex7\lv_hal_tick.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+ex7\lv_hal_tick.o: ..\Middlewares\Third_Party\lvgl\src\hal\../lv_conf_kconfig.h
+ex7\lv_hal_tick.o: ../Middlewares/Third_Party/lvgl/examples/porting/../../lv_conf.h
+ex7\lv_hal_tick.o: ../mycodeh/screen_config.h
+ex7\lv_hal_tick.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+ex7\lv_hal_tick.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
