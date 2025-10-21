@@ -1,0 +1,16 @@
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\lv_font.c
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\lv_font.h
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\../lv_conf_internal.h
+ex8\lv_font.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\../lv_conf_kconfig.h
+ex8\lv_font.o: ../Middlewares/Third_Party/lvgl/examples/porting/../../lv_conf.h
+ex8\lv_font.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+ex8\lv_font.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\lv_symbol_def.h
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\../misc/lv_area.h
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\../misc/lv_utils.h
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\../misc/lv_log.h
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\../misc/lv_types.h
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\../misc/lv_assert.h
+ex8\lv_font.o: ..\Middlewares\Third_Party\lvgl\src\font\../misc/lv_mem.h
+ex8\lv_font.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h

@@ -1,0 +1,16 @@
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\gifdec.c
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\gifdec.h
+ex8\gifdec.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\../../../misc/lv_fs.h
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\../../../misc/../lv_conf_internal.h
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\../../../misc/../lv_conf_kconfig.h
+ex8\gifdec.o: ../Middlewares/Third_Party/lvgl/examples/porting/../../lv_conf.h
+ex8\gifdec.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\../../../misc/lv_log.h
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\../../../misc/lv_types.h
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\../../../misc/lv_mem.h
+ex8\gifdec.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+ex8\gifdec.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\../../../misc/lv_color.h
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\../../../misc/lv_assert.h
+ex8\gifdec.o: ..\Middlewares\Third_Party\lvgl\src\extra\libs\gif\../../../misc/lv_math.h

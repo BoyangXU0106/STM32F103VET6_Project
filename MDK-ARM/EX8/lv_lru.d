@@ -1,0 +1,13 @@
+ex8\lv_lru.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_lru.c
+ex8\lv_lru.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_lru.h
+ex8\lv_lru.o: ..\Middlewares\Third_Party\lvgl\src\misc\../lv_conf_internal.h
+ex8\lv_lru.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+ex8\lv_lru.o: ..\Middlewares\Third_Party\lvgl\src\misc\../lv_conf_kconfig.h
+ex8\lv_lru.o: ../Middlewares/Third_Party/lvgl/examples/porting/../../lv_conf.h
+ex8\lv_lru.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_types.h
+ex8\lv_lru.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+ex8\lv_lru.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_math.h
+ex8\lv_lru.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_mem.h
+ex8\lv_lru.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+ex8\lv_lru.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_assert.h
+ex8\lv_lru.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_log.h

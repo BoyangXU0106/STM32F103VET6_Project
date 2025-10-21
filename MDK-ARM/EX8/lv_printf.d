@@ -1,0 +1,10 @@
+ex8\lv_printf.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_printf.c
+ex8\lv_printf.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_printf.h
+ex8\lv_printf.o: ..\Middlewares\Third_Party\lvgl\src\misc\../lv_conf_internal.h
+ex8\lv_printf.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+ex8\lv_printf.o: ..\Middlewares\Third_Party\lvgl\src\misc\../lv_conf_kconfig.h
+ex8\lv_printf.o: ../Middlewares/Third_Party/lvgl/examples/porting/../../lv_conf.h
+ex8\lv_printf.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+ex8\lv_printf.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+ex8\lv_printf.o: ..\Middlewares\Third_Party\lvgl\src\misc\lv_types.h
+ex8\lv_printf.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
