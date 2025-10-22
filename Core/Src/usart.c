@@ -282,6 +282,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   }
 }
 
+/* HAL_UARTEx_RxEventCallback 函数在 ble_data.c 中实现，避免重复定义 */
+
 /**
   * @brief  启动串口1的接收中断
   * @retval None

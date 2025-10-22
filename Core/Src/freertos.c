@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "log.h"
 #include "ble_data.h"
+#include "modbus.h"
 #include "usart.h"
 #include "bsp_ili9341_lcd.h"
 #include "bsp_xpt2046_lcd.h"
@@ -54,6 +55,9 @@
 /* USER CODE BEGIN Variables */
 /* BLE接收缓冲区 */
   uint8_t bt_rx_buffer[256];
+/* 全局任务句柄 */
+osThreadId_t g_PressureTaskHandle;  // 压力任务全局句柄
+osThreadId_t g_LCDTaskHandle;       // LCD任务全局句柄
 /* USER CODE END Variables */
 /* Definitions for Log_Task */
 osThreadId_t Log_TaskHandle;
@@ -83,6 +87,13 @@ const osThreadAttr_t LCD_Task_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for Monitor_Task */
+osThreadId_t Monitor_TaskHandle;
+const osThreadAttr_t Monitor_Task_attributes = {
+  .name = "Monitor_Task",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for logQueue */
 osMessageQueueId_t logQueueHandle;
 const osMessageQueueAttr_t logQueue_attributes = {
@@ -92,11 +103,6 @@ const osMessageQueueAttr_t logQueue_attributes = {
 osMessageQueueId_t BLEQueueHandle;
 const osMessageQueueAttr_t BLEQueue_attributes = {
   .name = "BLEQueue"
-};
-/* Definitions for PressureQueue */
-osMessageQueueId_t PressureQueueHandle;
-const osMessageQueueAttr_t PressureQueue_attributes = {
-  .name = "PressureQueue"
 };
 /* Definitions for uart1_mutex */
 osMutexId_t uart1_mutexHandle;
@@ -113,7 +119,7 @@ void LogTask(void *argument);
 void PressureTask(void *argument);
 void Usart2Task(void *argument);
 void LCDTask(void *argument);
-
+void MonitorTask(void *argument);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /**
@@ -148,9 +154,6 @@ void MX_FREERTOS_Init(void) {
   /* creation of BLEQueue */
   BLEQueueHandle = osMessageQueueNew (5, 262, &BLEQueue_attributes);
 
-  /* creation of PressureQueue */
-  PressureQueueHandle = osMessageQueueNew (3, sizeof(double), &PressureQueue_attributes);
-
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -168,7 +171,12 @@ void MX_FREERTOS_Init(void) {
   /* creation of LCD_Task */
   LCD_TaskHandle = osThreadNew(LCDTask, NULL, &LCD_Task_attributes);
 
+  /* creation of Monitor_Task */
+  Monitor_TaskHandle = osThreadNew(MonitorTask, NULL, &Monitor_Task_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
+  g_PressureTaskHandle = Pressure_TaskHandle;  // 压力任务全局句柄
+  g_LCDTaskHandle = LCD_TaskHandle;       // LCD任务全局句柄
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
@@ -253,51 +261,33 @@ void PressureTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+      /* 等待任务通知或超时 */
+      uint32_t flags = osThreadFlagsWait(0x01, osFlagsWaitAny, 5000);  /* 等待5秒或任务通知 */
+      
+      if (flags & 0x01) {
+          /* 收到任务通知，立即读取压力 */
+          Log_Debug("Pressure task triggered by notification");
+      } else {
+          /* 超时，正常周期读取 */
+          Log_Debug("Pressure task periodic read");
+      }
+      
       /* 读取压力数据 */
       pressure_value = PressureSensor_ReadData(&hi2c2);
       
       if (pressure_value != PRESSURE_READ_ERROR)
       {
-          osStatus_t queue_status;
+          /* 更新全局压力值 */
+          PressureSensor_UpdateValue(pressure_value);
           
-          /* 先尝试放入队列（0等待时间） */
-          queue_status = osMessageQueuePut(PressureQueueHandle, &pressure_value, 0, 0);
-          
-          if (queue_status == osOK)
-          {
-            pressure_value_hpa = pressure_value * 10000; //以hPa为单位
-            Log_Debug("Pressure_hpa data sent to queue: %d", pressure_value_hpa);
-            Log_Debug("Pressure_mPa data sent to queue: %.4f", pressure_value);
-          }
-          else if (queue_status == osErrorResource)
-          {
-              /* 队列已满，先移除最旧的数据，再放入新的 */
-              float old_value;
-              osMessageQueueGet(PressureQueueHandle, &old_value, NULL, 0);  // 移除一个最旧数据
-              
-              /* 再次放入最新数据 */
-              queue_status = osMessageQueuePut(PressureQueueHandle, &pressure_value, 0, 0);
-              
-              if (queue_status == osOK)
-              {
-                  Log_Warn("Queue full, oldest data dropped. New pressure: %.3f", pressure_value);
-              }
-              else
-              {
-                  Log_Error("Queue full and replace failed!");
-              }
-          }
-          else
-          {
-              Log_Error("Unexpected queue error: %d", queue_status);
-          }
+          pressure_value_hpa = pressure_value * 10000; //以hPa为单位
+          Log_Debug("Pressure_hpa: %d", pressure_value_hpa);
+          Log_Debug("Pressure_mPa: %.4f", pressure_value);
       }
       else
       {
           Log_Error("Pressure sensor read error");
       }
-      
-      osDelay(1000);  /* 延时1秒 */
   }
   
   /* USER CODE END PressureTask */
@@ -315,8 +305,18 @@ void Usart2Task(void *argument)
   /* USER CODE BEGIN Usart2Task */
   BLEMessage_t ble_msg;
   osStatus_t status;
+  uint8_t modbus_response[256];
+  uint16_t response_length;
+  
   /* 等待系统初始化完成 */
   osDelay(200);
+  
+  /* 初始化BLE系统 */
+  BLE_Init();
+  
+  /* 初始化Modbus系统 */
+  Modbus_Init();
+  
   Log_Info("Usart2 Task started, waiting for data from UART2");
   /* Infinite loop */
   for(;;)
@@ -325,17 +325,38 @@ void Usart2Task(void *argument)
     status = osMessageQueueGet(BLEQueueHandle, &ble_msg, NULL, osWaitForever);
     if (status == osOK)
     {
-      /* 获取UART1互斥锁 */
-      osMutexAcquire(uart1_mutexHandle, osWaitForever);
-
-      /* 把接收到的数据转发到串口1打印 */
-      HAL_UART_Transmit(&huart1, ble_msg.data, ble_msg.length, 100);
-
-      /* 添加换行符以便于观察 */
-      HAL_UART_Transmit(&huart1, (uint8_t*)"\r\n", 2, 100);
- 
-      /* 释放UART1互斥锁 */
-      osMutexRelease(uart1_mutexHandle);
+      /* 尝试处理Modbus请求 */
+      Modbus_ProcessRequest(ble_msg.data, ble_msg.length, modbus_response, &response_length);
+      
+      if (response_length > 0)
+      {
+        /* 获取UART1互斥锁 */
+        osMutexAcquire(uart1_mutexHandle, osWaitForever);
+        
+        /* 发送Modbus响应 */
+        HAL_UART_Transmit(&huart1, modbus_response, response_length, 100);
+        
+        /* 释放UART1互斥锁 */
+        osMutexRelease(uart1_mutexHandle);
+        
+        Log_Info("Modbus response sent: %d bytes", response_length);
+      }
+      else
+      {
+        /* 不是Modbus请求，作为普通数据转发到串口1 */
+        osMutexAcquire(uart1_mutexHandle, osWaitForever);
+        
+        /* 把接收到的数据转发到串口1打印 */
+        HAL_UART_Transmit(&huart1, ble_msg.data, ble_msg.length, 100);
+        
+        /* 添加换行符以便于观察 */
+        HAL_UART_Transmit(&huart1, (uint8_t*)"\r\n", 2, 100);
+        
+        /* 释放UART1互斥锁 */
+        osMutexRelease(uart1_mutexHandle);
+        
+        Log_Info("BLE data forwarded: %d bytes", ble_msg.length);
+      }
     }
   }
   /* USER CODE END Usart2Task */
@@ -352,7 +373,6 @@ void LCDTask(void *argument)
 {
   /* USER CODE BEGIN LCDTask */
   double pressure_value;
-  osStatus_t queue_status;
   char dispBuff[100];
   uint16_t display_counter = 0;
   uint8_t first_run = 1;
@@ -366,20 +386,30 @@ void LCDTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+    /* 等待任务通知或超时 */
+    uint32_t flags = osThreadFlagsWait(0x01, osFlagsWaitAny, 1000);  /* 等待1秒超时 */
+    
     display_counter++;
     
     /* 只在第一次运行时清屏并显示静态内容 */
     if (first_run) {
       /* 清屏 */
       ILI9341_Clear(0,0,LCD_X_LENGTH,LCD_Y_LENGTH);
-  
+
       first_run = 0;
     }
     
-    /* 尝试从压力队列获取数据 */
-    queue_status = osMessageQueueGet(PressureQueueHandle, &pressure_value, NULL, 0);
+    /* 检查是否收到任务通知 */
+    if (flags & 0x01) {
+      Log_Debug("LCD task triggered by notification");
+    } else {
+      Log_Debug("LCD task periodic refresh");
+    }
     
-    if (queue_status == osOK) {
+    /* 直接从全局变量读取压力数据 */
+    pressure_value = PressureSensor_GetLatestValue();
+    
+    if (pressure_value != PRESSURE_READ_ERROR) {
       /* 使用OpenWindow精确刷新压力数据区域 */
       ILI9341_OpenWindow(0, LINE(0), LCD_X_LENGTH, LINE(2) - LINE(0) + 16);
       ILI9341_Clear(0, LINE(0), LCD_X_LENGTH, LINE(2) - LINE(0) + 16);  /* 清除压力数据区域 */
@@ -424,11 +454,27 @@ void LCDTask(void *argument)
     sprintf(dispBuff,"Display Count: %d", display_counter);
     ILI9341_DispStringLine_EN(LINE(19), dispBuff);
     
-    
-    /* 延迟1秒 */
-    osDelay(1000);
+    /* 注意：不再需要osDelay，因为osThreadFlagsWait已经处理了超时 */
   }
   /* USER CODE END LCDTask */
+}
+
+/* USER CODE BEGIN Header_MonitorTask */
+/**
+* @brief Function implementing the Monitor_Task thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_MonitorTask */
+void MonitorTask(void *argument)
+{
+  /* USER CODE BEGIN MonitorTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1000);
+  }
+  /* USER CODE END MonitorTask */
 }
 
 /* Private application code --------------------------------------------------*/

@@ -46,6 +46,7 @@
 "ex8\pressure.o"
 "ex8\bsp_ili9341_lcd.o"
 "ex8\fonts.o"
+"ex8\modbus.o"
 --library_type=microlib --strict --scatter "EX8\EX8.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

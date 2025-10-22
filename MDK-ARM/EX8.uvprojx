@@ -1052,6 +1052,11 @@
               <FileType>1</FileType>
               <FilePath>..\mycodec\fonts.c</FilePath>
             </File>
+            <File>
+              <FileName>modbus.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\mycodec\modbus.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

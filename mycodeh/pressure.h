@@ -32,6 +32,12 @@ Pressure_Status PressureSensor_Init(I2C_HandleTypeDef *hi2c);
 //Pressure_Status PressureSensor_ReadData(I2C_HandleTypeDef *hi2c, double *pressure);
 double PressureSensor_ReadData(I2C_HandleTypeDef *hi2c);
 
+// 新增函数声明
+double PressureSensor_ReadImmediate(void);
+double PressureSensor_GetLatestValue(void);
+uint32_t PressureSensor_GetTimestamp(void);
+void PressureSensor_UpdateValue(double pressure_value);
+
 #if Modbus_pressure
 
 void PressureSensor_PrintData(UART_HandleTypeDef *huart, int pressure);

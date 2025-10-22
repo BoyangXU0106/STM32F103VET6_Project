@@ -67,6 +67,59 @@ double PressureSensor_ReadData(I2C_HandleTypeDef *hi2c)
     return actual_pressure;
 }
 
+// 全局压力值存储
+static double g_latest_pressure_value = 0.0;
+static uint32_t g_pressure_timestamp = 0;
+
+/**
+ * @brief 立即读取压力值并更新全局变量
+ * @return 压力值（MPa）
+ */
+double PressureSensor_ReadImmediate(void)
+{
+    double pressure_value = PressureSensor_ReadData(hi2c_pressure);
+    
+    if (pressure_value != PRESSURE_READ_ERROR)
+    {
+        g_latest_pressure_value = pressure_value;
+        g_pressure_timestamp = HAL_GetTick();
+        Log_Info("Immediate pressure read: %.4f MPa", pressure_value);
+    }
+    
+    return pressure_value;
+}
+
+/**
+ * @brief 获取最新的压力值
+ * @return 压力值（MPa）
+ */
+double PressureSensor_GetLatestValue(void)
+{
+    return g_latest_pressure_value;
+}
+
+/**
+ * @brief 获取压力值的时间戳
+ * @return 时间戳（ms）
+ */
+uint32_t PressureSensor_GetTimestamp(void)
+{
+    return g_pressure_timestamp;
+}
+
+/**
+ * @brief 更新全局压力值
+ * @param pressure_value 压力值（MPa）
+ */
+void PressureSensor_UpdateValue(double pressure_value)
+{
+    if (pressure_value != PRESSURE_READ_ERROR)
+    {
+        g_latest_pressure_value = pressure_value;
+        g_pressure_timestamp = HAL_GetTick();
+    }
+}
+
 
 
 

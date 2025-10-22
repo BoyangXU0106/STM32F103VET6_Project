@@ -110,6 +110,22 @@ void BLE_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         
         Log_Debug("BLE UART Rx Complete: %d bytes", ble_rx_count);
         
+        /* 创建BLE消息并复制实际接收的数据 */
+        BLEMessage_t ble_msg;
+        ble_msg.length = ble_rx_count;
+        ble_msg.timestamp = HAL_GetTick();
+        
+        /* 复制接收到的数据 */
+        memcpy(ble_msg.data, ble_rx_buffer, ble_rx_count);
+        
+        /* 将消息放入队列 */
+        osStatus_t status = osMessageQueuePut(BLEQueueHandle, &ble_msg, 0, 0);
+        if (status != osOK) {
+            Log_Error("BLE queue full, data lost");
+        } else {
+            Log_Debug("BLE data queued: %d bytes", ble_rx_count);
+        }
+        
         /* 设置接收完成标志 */
         ble_rx_complete = 1;
         
@@ -126,9 +142,14 @@ void BLE_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
-    if (huart->Instance == USART2) // 蓝牙串口
+    if (huart->Instance == USART1) // 调试串口
     {
-        //Log_Debug("BLE UART Rx Event: %d bytes", Size);
+        Log_Debug("UART1 Rx Event: %d bytes", Size);
+        // 这里可以添加USART1的处理逻辑
+    }
+    else if (huart->Instance == USART2) // 蓝牙串口
+    {
+        Log_Debug("BLE UART Rx Event: %d bytes", Size);
         
         // 创建BLE消息并复制实际接收的数据
         BLEMessage_t ble_msg;
@@ -143,7 +164,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         if (status != osOK) {
             Log_Error("BLE queue full, data lost");
         } else {
-            //Log_Debug("BLE data queued: %d bytes", Size);
+            Log_Debug("BLE data queued: %d bytes", Size);
         }
         
         // 重新启动DMA接收
