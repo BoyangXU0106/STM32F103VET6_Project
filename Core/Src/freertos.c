@@ -94,6 +94,13 @@ const osThreadAttr_t Monitor_Task_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for BLE_Task */
+osThreadId_t BLE_TaskHandle;
+const osThreadAttr_t BLE_Task_attributes = {
+  .name = "BLE_Task",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for logQueue */
 osMessageQueueId_t logQueueHandle;
 const osMessageQueueAttr_t logQueue_attributes = {
@@ -120,6 +127,8 @@ void PressureTask(void *argument);
 void Usart2Task(void *argument);
 void LCDTask(void *argument);
 void MonitorTask(void *argument);
+void BLETask(void *argument);
+
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /**
@@ -173,6 +182,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of Monitor_Task */
   Monitor_TaskHandle = osThreadNew(MonitorTask, NULL, &Monitor_Task_attributes);
+
+  /* creation of BLE_Task */
+  BLE_TaskHandle = osThreadNew(BLETask, NULL, &BLE_Task_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   g_PressureTaskHandle = Pressure_TaskHandle;  // 压力任务全局句柄
@@ -266,10 +278,10 @@ void PressureTask(void *argument)
       
       if (flags & 0x01) {
           /* 收到任务通知，立即读取压力 */
-          Log_Debug("Pressure task triggered by notification");
+//          Log_Debug("Pressure task triggered by notification");
       } else {
           /* 超时，正常周期读取 */
-          Log_Debug("Pressure task periodic read");
+//          Log_Debug("Pressure task periodic read");
       }
       
       /* 读取压力数据 */
@@ -325,26 +337,33 @@ void Usart2Task(void *argument)
     status = osMessageQueueGet(BLEQueueHandle, &ble_msg, NULL, osWaitForever);
     if (status == osOK)
     {
-      /* 尝试处理Modbus请求 */
-      Modbus_ProcessRequest(ble_msg.data, ble_msg.length, modbus_response, &response_length);
-      
-      if (response_length > 0)
+      /* 先检测是否为Modbus命令 */
+      if (Modbus_IsModbusCommand(ble_msg.data, ble_msg.length))
       {
-        /* 获取UART1互斥锁 */
-        osMutexAcquire(uart1_mutexHandle, osWaitForever);
+        /* 是Modbus命令，处理Modbus请求 */
+        Modbus_ProcessRequest(ble_msg.data, ble_msg.length, modbus_response, &response_length);
         
-        /* 发送Modbus响应 */
-        HAL_UART_Transmit(&huart1, modbus_response, response_length, 100);
-        
-        /* 释放UART1互斥锁 */
-        osMutexRelease(uart1_mutexHandle);
-        
-        Log_Info("Modbus response sent: %d bytes", response_length);
+        if (response_length > 0)
+        {
+          /* 获取UART1互斥锁 */
+          osMutexAcquire(uart1_mutexHandle, osWaitForever);
+          
+          /* 发送Modbus响应 */
+          HAL_UART_Transmit(&huart1, modbus_response, response_length, 100);
+          HAL_UART_Transmit(&huart2, modbus_response, response_length, 100);
+          /* 释放UART1互斥锁 */
+          osMutexRelease(uart1_mutexHandle);
+          
+          Log_Info("Modbus response sent: %d bytes", response_length);
+        }
       }
       else
       {
-        /* 不是Modbus请求，作为普通数据转发到串口1 */
+        /* 不是Modbus命令，作为普通字符串处理 */
         osMutexAcquire(uart1_mutexHandle, osWaitForever);
+        
+        /* 添加接收标识 */
+        HAL_UART_Transmit(&huart1, (uint8_t*)"receive:", 8, 100);
         
         /* 把接收到的数据转发到串口1打印 */
         HAL_UART_Transmit(&huart1, ble_msg.data, ble_msg.length, 100);
@@ -355,7 +374,7 @@ void Usart2Task(void *argument)
         /* 释放UART1互斥锁 */
         osMutexRelease(uart1_mutexHandle);
         
-        Log_Info("BLE data forwarded: %d bytes", ble_msg.length);
+        Log_Info("String data received: %d bytes", ble_msg.length);
       }
     }
   }
@@ -401,9 +420,9 @@ void LCDTask(void *argument)
     
     /* 检查是否收到任务通知 */
     if (flags & 0x01) {
-      Log_Debug("LCD task triggered by notification");
+//      Log_Debug("LCD task triggered by notification");
     } else {
-      Log_Debug("LCD task periodic refresh");
+//      Log_Debug("LCD task periodic refresh");
     }
     
     /* 直接从全局变量读取压力数据 */
@@ -475,6 +494,37 @@ void MonitorTask(void *argument)
     osDelay(1000);
   }
   /* USER CODE END MonitorTask */
+}
+
+/* USER CODE BEGIN Header_BLETask */
+/**
+* @brief Function implementing the BLE_Task thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_BLETask */
+void BLETask(void *argument)
+{
+  /* USER CODE BEGIN BLETask */
+  osDelay(2000);
+  Log_Info("BLETask Start");
+
+  HAL_UART_Transmit(&huart2, (uint8_t*)"+++", 3, 100);
+  osDelay(1000);
+  HAL_UART_Transmit(&huart2, (uint8_t*)"AT+NAME=0,STM32F103VETx\r\n", 25, 100);
+  osDelay(1000);
+  HAL_UART_Transmit(&huart2, (uint8_t*)"AT+ROLE=0\r\n", 11, 100);
+  osDelay(1000);
+  HAL_UART_Transmit(&huart2, (uint8_t*)"AT+EXIT\r\n", 9, 100);
+
+  
+  /* Infinite loop */
+  for(;;)
+  {
+
+    osDelay(1000);
+  }
+  /* USER CODE END BLETask */
 }
 
 /* Private application code --------------------------------------------------*/

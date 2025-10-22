@@ -1,5 +1,6 @@
 /* pressure.c */
 #include "pressure.h"
+#include "modbus.h"  // 包含全局传感器数据结构
 #include <string.h>
 #include "stdio.h"
 #include "math.h"
@@ -67,9 +68,7 @@ double PressureSensor_ReadData(I2C_HandleTypeDef *hi2c)
     return actual_pressure;
 }
 
-// 全局压力值存储
-static double g_latest_pressure_value = 0.0;
-static uint32_t g_pressure_timestamp = 0;
+// 注意：全局压力值存储已移至modbus.c中的g_sensor_data结构体
 
 /**
  * @brief 立即读取压力值并更新全局变量
@@ -81,8 +80,8 @@ double PressureSensor_ReadImmediate(void)
     
     if (pressure_value != PRESSURE_READ_ERROR)
     {
-        g_latest_pressure_value = pressure_value;
-        g_pressure_timestamp = HAL_GetTick();
+        // 使用全局传感器数据更新
+        SensorData_UpdatePressure(pressure_value);
         Log_Info("Immediate pressure read: %.4f MPa", pressure_value);
     }
     
@@ -95,7 +94,7 @@ double PressureSensor_ReadImmediate(void)
  */
 double PressureSensor_GetLatestValue(void)
 {
-    return g_latest_pressure_value;
+    return g_sensor_data.pressure_value;
 }
 
 /**
@@ -104,7 +103,7 @@ double PressureSensor_GetLatestValue(void)
  */
 uint32_t PressureSensor_GetTimestamp(void)
 {
-    return g_pressure_timestamp;
+    return g_sensor_data.pressure_timestamp;
 }
 
 /**
@@ -115,8 +114,7 @@ void PressureSensor_UpdateValue(double pressure_value)
 {
     if (pressure_value != PRESSURE_READ_ERROR)
     {
-        g_latest_pressure_value = pressure_value;
-        g_pressure_timestamp = HAL_GetTick();
+        SensorData_UpdatePressure(pressure_value);
     }
 }
 

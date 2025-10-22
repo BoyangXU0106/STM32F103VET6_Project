@@ -6,6 +6,8 @@
 "ex8\dma.o"
 "ex8\fsmc.o"
 "ex8\i2c.o"
+"ex8\spi.o"
+"ex8\tim.o"
 "ex8\usart.o"
 "ex8\stm32f1xx_it.o"
 "ex8\stm32f1xx_hal_msp.o"
@@ -29,6 +31,7 @@
 "ex8\stm32f1xx_hal_nand.o"
 "ex8\stm32f1xx_hal_pccard.o"
 "ex8\stm32f1xx_hal_i2c.o"
+"ex8\stm32f1xx_hal_spi.o"
 "ex8\stm32f1xx_hal_uart.o"
 "ex8\system_stm32f1xx.o"
 "ex8\croutine.o"
@@ -47,6 +50,7 @@
 "ex8\bsp_ili9341_lcd.o"
 "ex8\fonts.o"
 "ex8\modbus.o"
+"ex8\delay.o"
 --library_type=microlib --strict --scatter "EX8\EX8.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

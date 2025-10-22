@@ -28,6 +28,7 @@ ex8\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_sram.h
 ex8\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_fsmc.h
 ex8\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_i2c.h
 ex8\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
+ex8\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h
 ex8\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 ex8\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
 ex8\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
@@ -44,6 +45,8 @@ ex8\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 ex8\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
 ex8\main.o: ../Core/Inc/dma.h
 ex8\main.o: ../Core/Inc/i2c.h
+ex8\main.o: ../Core/Inc/spi.h
+ex8\main.o: ../Core/Inc/tim.h
 ex8\main.o: ../Core/Inc/usart.h
 ex8\main.o: ../Core/Inc/gpio.h
 ex8\main.o: ../Core/Inc/fsmc.h

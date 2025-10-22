@@ -10,8 +10,9 @@
 extern osThreadId_t g_PressureTaskHandle;
 extern osThreadId_t g_LCDTaskHandle;
 
-// 全局寄存器数据
-ModbusRegisters_t g_modbus_registers = {0};
+// 全局传感器数据
+GlobalSensorData_t g_sensor_data = {0};        // 全局传感器数据
+ModbusRegisters_t g_modbus_registers = {0};    // Modbus寄存器数据
 
 // CRC16查找表
 static const uint16_t crc16_table[256] = {
@@ -54,10 +55,16 @@ static const uint16_t crc16_table[256] = {
  */
 void Modbus_Init(void)
 {
-    // 初始化寄存器数据
+    // 初始化全局传感器数据
+    SensorData_Init();
+    
+    // 初始化Modbus寄存器数据
     g_modbus_registers.pressure = 0;
     g_modbus_registers.temperature = 0;
     g_modbus_registers.status = 0;
+    g_modbus_registers.error_count = 0;
+    
+    Log_Info("Modbus and global sensor data initialized");
 }
 
 /**
@@ -66,10 +73,8 @@ void Modbus_Init(void)
  */
 void Modbus_UpdatePressure(float pressure_value)
 {
-    // 将浮点压力值转换为16位整数
-    // 假设压力值范围0-1000，精度0.1，则乘以10存储
-    uint16_t pressure_int = (uint16_t)(pressure_value * 10);
-    g_modbus_registers.pressure = pressure_int;
+    // 使用全局传感器数据更新函数
+    SensorData_UpdatePressure((double)pressure_value);
 }
 
 /**
@@ -78,10 +83,8 @@ void Modbus_UpdatePressure(float pressure_value)
  */
 void Modbus_UpdateTemperature(float temperature_value)
 {
-    // 将浮点温度值转换为16位整数
-    // 假设温度值范围-40到+125，精度0.1，则乘以10并偏移400存储
-    int16_t temp_int = (int16_t)(temperature_value * 10);
-    g_modbus_registers.temperature = (uint16_t)(temp_int + 400);
+    // 使用全局传感器数据更新函数
+    SensorData_UpdateTemperature((double)temperature_value);
 }
 
 /**
@@ -90,7 +93,8 @@ void Modbus_UpdateTemperature(float temperature_value)
  */
 void Modbus_UpdateStatus(uint16_t status_value)
 {
-    g_modbus_registers.status = status_value;
+    // 使用全局传感器数据更新函数
+    SensorData_UpdateSystemStatus(status_value);
 }
 
 /**
@@ -200,6 +204,40 @@ void Modbus_BuildExceptionResponse(uint8_t slave_addr, uint8_t function_code, ui
 }
 
 /**
+ * @brief 检测是否为Modbus命令
+ * @param rx_buffer 接收缓冲区
+ * @param rx_length 接收长度
+ * @return true: 是Modbus命令, false: 不是Modbus命令
+ */
+bool Modbus_IsModbusCommand(uint8_t* rx_buffer, uint16_t rx_length)
+{
+    // 检查最小帧长度
+    if (rx_length < 4) {
+        return false;
+    }
+    
+    // 检查从机地址（假设本设备地址为1）
+    uint8_t slave_addr = rx_buffer[0];
+    if (slave_addr != 0x01) {
+        return false;
+    }
+    
+    // 检查功能码是否在有效范围内
+    uint8_t function_code = rx_buffer[1];
+    if (function_code != MODBUS_READ_HOLDING_REGISTERS && 
+        function_code != MODBUS_READ_INPUT_REGISTERS) {
+        return false;
+    }
+    
+    // 检查CRC（简单验证）
+    if (!Modbus_ValidateCRC(rx_buffer, rx_length)) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
  * @brief 处理Modbus请求
  * @param rx_buffer 接收缓冲区
  * @param rx_length 接收长度
@@ -209,7 +247,7 @@ void Modbus_BuildExceptionResponse(uint8_t slave_addr, uint8_t function_code, ui
  */
 bool Modbus_ProcessRequest(uint8_t* rx_buffer, uint16_t rx_length, uint8_t* tx_buffer, uint16_t* tx_length)
 {
-    Log_Debug("Modbus_ProcessRequest: RX length=%d", rx_length);
+//    Log_Debug("Modbus_ProcessRequest: RX length=%d", rx_length);
     
     // 检查最小帧长度
     if (rx_length < 4) {
@@ -270,12 +308,12 @@ bool Modbus_ProcessRequest(uint8_t* rx_buffer, uint16_t rx_length, uint8_t* tx_b
                         {
                             if (g_PressureTaskHandle != NULL) {
                                 osThreadFlagsSet(g_PressureTaskHandle, 0x01);  /* 发送压力任务通知 */
-                                Log_Debug("Modbus: Sent pressure task notification");
+//                                Log_Debug("Modbus: Sent pressure task notification");
                             }
                             
                             if (g_LCDTaskHandle != NULL) {
                                 osThreadFlagsSet(g_LCDTaskHandle, 0x01);  /* 发送LCD任务通知 */
-                                Log_Debug("Modbus: Sent LCD task notification");
+//                                Log_Debug("Modbus: Sent LCD task notification");
                             }
                             
                             /* 等待一小段时间让压力任务完成读取 */
@@ -288,7 +326,7 @@ bool Modbus_ProcessRequest(uint8_t* rx_buffer, uint16_t rx_length, uint8_t* tx_b
                                 // 将压力值*10000后存储到寄存器
                                 uint16_t pressure_scaled = (uint16_t)(pressure_value * 10000);
                                 g_modbus_registers.pressure = pressure_scaled;
-                                Log_Info("Modbus: Pressure read via task notification: %.4f MPa, scaled: %d", pressure_value, pressure_scaled);
+//                                Log_Info("Modbus: Pressure read via task notification: %.4f MPa, scaled: %d", pressure_value, pressure_scaled);
                             }
                             else
                             {
@@ -405,4 +443,114 @@ bool Modbus_ProcessRequest(uint8_t* rx_buffer, uint16_t rx_length, uint8_t* tx_b
             Modbus_BuildExceptionResponse(slave_addr, function_code, MODBUS_EXCEPTION_ILLEGAL_FUNCTION, tx_buffer, tx_length);
             return true;
     }
+}
+
+// ============================================================================
+// 全局传感器数据管理函数
+// ============================================================================
+
+/**
+ * @brief 初始化全局传感器数据
+ */
+void SensorData_Init(void)
+{
+    // 清零所有数据
+    memset(&g_sensor_data, 0, sizeof(GlobalSensorData_t));
+    
+    // 设置初始状态
+    g_sensor_data.system_status = 0x0001;  // 系统启动状态
+    g_sensor_data.system_timestamp = HAL_GetTick();
+    
+    Log_Info("Global sensor data initialized");
+}
+
+/**
+ * @brief 更新压力传感器数据
+ * @param pressure_value 压力值（MPa）
+ */
+void SensorData_UpdatePressure(double pressure_value)
+{
+    g_sensor_data.pressure_value = pressure_value;
+    g_sensor_data.pressure_timestamp = HAL_GetTick();
+    g_sensor_data.pressure_valid = 1;
+    
+    // 同时更新Modbus寄存器
+    uint16_t pressure_scaled = (uint16_t)(pressure_value * 10000);
+    g_modbus_registers.pressure = pressure_scaled;
+    
+    Log_Info("Sensor data: Pressure updated to %.4f MPa", pressure_value);
+}
+
+/**
+ * @brief 更新温度传感器数据
+ * @param temperature_value 温度值（°C）
+ */
+void SensorData_UpdateTemperature(double temperature_value)
+{
+    g_sensor_data.temperature_value = temperature_value;
+    g_sensor_data.temperature_timestamp = HAL_GetTick();
+    g_sensor_data.temperature_valid = 1;
+    
+    // 同时更新Modbus寄存器
+    int16_t temp_int = (int16_t)(temperature_value * 10);
+    g_sensor_data.temperature_value = (uint16_t)(temp_int + 400);
+    g_modbus_registers.temperature = g_sensor_data.temperature_value;
+    
+    Log_Info("Sensor data: Temperature updated to %.2f °C", temperature_value);
+}
+
+/**
+ * @brief 更新系统状态
+ * @param status 系统状态字
+ */
+void SensorData_UpdateSystemStatus(uint16_t status)
+{
+    g_sensor_data.system_status = status;
+    g_sensor_data.system_timestamp = HAL_GetTick();
+    
+    // 同时更新Modbus寄存器
+    g_modbus_registers.status = status;
+    
+    Log_Info("Sensor data: System status updated to 0x%04X", status);
+}
+
+/**
+ * @brief 更新错误计数
+ * @param error_count 错误计数
+ */
+void SensorData_UpdateErrorCount(uint16_t error_count)
+{
+    g_sensor_data.error_count = error_count;
+    g_sensor_data.system_timestamp = HAL_GetTick();
+    
+    // 同时更新Modbus寄存器
+    g_modbus_registers.error_count = error_count;
+    
+    Log_Info("Sensor data: Error count updated to %d", error_count);
+}
+
+/**
+ * @brief 更新通信状态
+ * @param i2c_status I2C通信状态
+ * @param uart_status UART通信状态
+ * @param ble_status BLE连接状态
+ */
+//void SensorData_UpdateCommunicationStatus(uint8_t i2c_status, uint8_t uart_status, uint8_t ble_status)
+//{
+//    g_sensor_data.i2c_status = i2c_status;
+//    g_sensor_data.uart_status = uart_status;
+//    g_sensor_data.ble_status = ble_status;
+//    g_sensor_data.system_timestamp = HAL_GetTick();
+//    
+//    Log_Info("Sensor data: Communication status updated - I2C:%d UART:%d BLE:%d", 
+//             i2c_status, uart_status, ble_status);
+//}
+
+/**
+ * @brief 获取全局传感器数据指针
+ * @return 全局传感器数据指针
+ */
+GlobalSensorData_t* SensorData_GetGlobalData(void)
+{
+    return &g_sensor_data;
 }
