@@ -59,8 +59,6 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define XPT2046_MOSI_Pin GPIO_PIN_2
 #define XPT2046_MOSI_GPIO_Port GPIOE
-#define XPT2046_MISO_Pin GPIO_PIN_3
-#define XPT2046_MISO_GPIO_Port GPIOE
 #define XPT2046_PENIRQ_Pin GPIO_PIN_4
 #define XPT2046_PENIRQ_GPIO_Port GPIOE
 #define LED_G_Pin GPIO_PIN_0

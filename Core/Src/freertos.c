@@ -28,12 +28,16 @@
 #include "log.h"
 #include "ble_data.h"
 #include "modbus.h"
+#include "delay.h"
 #include "usart.h"
 #include "bsp_ili9341_lcd.h"
 #include "bsp_xpt2046_lcd.h"
 #include "pressure.h"
 #include <string.h>
 #include "i2c.h"
+#include "bsp_dht11.h"
+#include "tim.h"
+#include "bsp_dwt.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,6 +62,7 @@
 /* 全局任务句柄 */
 osThreadId_t g_PressureTaskHandle;  // 压力任务全局句柄
 osThreadId_t g_LCDTaskHandle;       // LCD任务全局句柄
+osThreadId_t g_DHT11TaskHandle;  // dht11任务全局句柄
 /* USER CODE END Variables */
 /* Definitions for Log_Task */
 osThreadId_t Log_TaskHandle;
@@ -101,6 +106,20 @@ const osThreadAttr_t BLE_Task_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for DHT11_Task */
+osThreadId_t DHT11_TaskHandle;
+const osThreadAttr_t DHT11_Task_attributes = {
+  .name = "DHT11_Task",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for FLASH_Task */
+osThreadId_t FLASH_TaskHandle;
+const osThreadAttr_t FLASH_Task_attributes = {
+  .name = "FLASH_Task",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for logQueue */
 osMessageQueueId_t logQueueHandle;
 const osMessageQueueAttr_t logQueue_attributes = {
@@ -128,6 +147,8 @@ void Usart2Task(void *argument);
 void LCDTask(void *argument);
 void MonitorTask(void *argument);
 void BLETask(void *argument);
+void DHT11Task(void *argument);
+void FLASHTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -186,13 +207,22 @@ void MX_FREERTOS_Init(void) {
   /* creation of BLE_Task */
   BLE_TaskHandle = osThreadNew(BLETask, NULL, &BLE_Task_attributes);
 
+  /* creation of DHT11_Task */
+  DHT11_TaskHandle = osThreadNew(DHT11Task, NULL, &DHT11_Task_attributes);
+
+  /* creation of FLASH_Task */
+  FLASH_TaskHandle = osThreadNew(FLASHTask, NULL, &FLASH_Task_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   g_PressureTaskHandle = Pressure_TaskHandle;  // 压力任务全局句柄
   g_LCDTaskHandle = LCD_TaskHandle;       // LCD任务全局句柄
+  g_DHT11TaskHandle = DHT11_TaskHandle;  // DHT11任务全局句柄
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
+  
+  
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
@@ -253,6 +283,11 @@ void LogTask(void *argument)
 void PressureTask(void *argument)
 {
   /* USER CODE BEGIN PressureTask */
+  osDelay(1000);
+  Log_Info("Pressure Task Suspend");
+  osThreadSuspend(osThreadGetId());
+  
+  
   double pressure_value;
   uint16_t pressure_value_hpa;
   /* Wait for system initialization */
@@ -261,7 +296,7 @@ void PressureTask(void *argument)
   Log_Info("Pressure Task started");
   
   /* Initialize pressure sensor */
-  if (PressureSensor_Init(&hi2c2) != PRESSURE_OK) {
+  if (PressureSensor_Init(&hi2c1) != PRESSURE_OK) {
     Log_Error("Pressure sensor initialization failed");
     for(;;) {
       osDelay(1000);
@@ -285,7 +320,7 @@ void PressureTask(void *argument)
       }
       
       /* 读取压力数据 */
-      pressure_value = PressureSensor_ReadData(&hi2c2);
+      pressure_value = PressureSensor_ReadData(&hi2c1);
       
       if (pressure_value != PRESSURE_READ_ERROR)
       {
@@ -391,7 +426,15 @@ void Usart2Task(void *argument)
 void LCDTask(void *argument)
 {
   /* USER CODE BEGIN LCDTask */
+  osDelay(1000);
+  Log_Info("LCD Task Suspend");
+  osThreadSuspend(osThreadGetId());
+  
+  
+  
   double pressure_value;
+  float temperature_value;
+  float humidity_value;
   char dispBuff[100];
   uint16_t display_counter = 0;
   uint8_t first_run = 1;
@@ -442,27 +485,47 @@ void LCDTask(void *argument)
       LCD_SetTextColor(YELLOW);
       sprintf(dispBuff,"%.4f MPa", pressure_value);
       ILI9341_DispStringLine_EN(LINE(1), dispBuff);
+ 
+    } 
+
+    /* 直接从全局变量读取温度数据 */
+    temperature_value = TemperatureSensor_GetLatestValue();
+    if (temperature_value != 0.0f) {
+      /* 使用OpenWindow精确刷新温度数据区域 */
+      ILI9341_OpenWindow(0, LINE(2), LCD_X_LENGTH, LINE(2) - LINE(2) + 16);
+      ILI9341_Clear(0, LINE(2), LCD_X_LENGTH, LINE(2) - LINE(2) + 16);  /* 清除温度数据区域 */
       
-      /* 显示数据状态 */
+      /* 显示温度数据 */
       LCD_SetFont(&Font8x16);
       LCD_SetTextColor(GREEN);
-      ILI9341_DispStringLine_EN(LINE(2),"Status: Data OK");
-      
-    } else {
-      /* 使用OpenWindow精确刷新无数据状态区域 */
-      ILI9341_OpenWindow(0, LINE(0), LCD_X_LENGTH, LINE(2) - LINE(0) + 16);
-      ILI9341_Clear(0, LINE(0), LCD_X_LENGTH, LINE(2) - LINE(0) + 16);  /* 清除压力数据区域 */
-      
-      /* 显示无数据状态 */
-      LCD_SetFont(&Font8x16);
-      LCD_SetTextColor(RED);
-      ILI9341_DispStringLine_EN(LINE(0),"No Pressure Data");
+      ILI9341_DispStringLine_EN(LINE(2),"Temperature Data:");
       
       LCD_SetFont(&Font8x16);
-      LCD_SetTextColor(RED);
-      ILI9341_DispStringLine_EN(LINE(2),"Status: Waiting...");
+      LCD_SetTextColor(YELLOW);
+      sprintf(dispBuff,"%.1f C", temperature_value);
+      ILI9341_DispStringLine_EN(LINE(3), dispBuff);
     }
+
     
+    /* 直接从全局变量读取湿度数据 */
+    humidity_value = HumiditySensor_GetLatestValue();
+    if (humidity_value != 0.0f) {
+      /* 使用OpenWindow精确刷新湿度数据区域 */
+      ILI9341_OpenWindow(0, LINE(4), LCD_X_LENGTH, LINE(4) - LINE(4) + 16);
+      ILI9341_Clear(0, LINE(4), LCD_X_LENGTH, LINE(4) - LINE(4) + 16);  /* 清除湿度数据区域 */
+      
+      /* 显示湿度数据 */
+      LCD_SetFont(&Font8x16);
+      LCD_SetTextColor(GREEN);
+      ILI9341_DispStringLine_EN(LINE(4),"Humidity Data:");
+      
+      LCD_SetFont(&Font8x16);
+      LCD_SetTextColor(YELLOW);
+      sprintf(dispBuff,"%.1f%%", humidity_value);
+      ILI9341_DispStringLine_EN(LINE(5), dispBuff);
+    }
+
+
     /* 使用OpenWindow精确刷新系统信息区域 */
     ILI9341_OpenWindow(0, LINE(19), LCD_X_LENGTH, LINE(19) - LINE(19) + 16);
     ILI9341_Clear(0, LINE(19), LCD_X_LENGTH, LINE(19) - LINE(19) + 16);  /* 清除系统信息区域 */
@@ -488,6 +551,11 @@ void LCDTask(void *argument)
 void MonitorTask(void *argument)
 {
   /* USER CODE BEGIN MonitorTask */
+  osDelay(1000);
+  Log_Info("Monitor Task Suspend");
+  osThreadSuspend(osThreadGetId());
+  
+  
   /* Infinite loop */
   for(;;)
   {
@@ -507,6 +575,11 @@ void BLETask(void *argument)
 {
   /* USER CODE BEGIN BLETask */
   osDelay(2000);
+  Log_Info("BLE Task Suspend");
+  osThreadSuspend(osThreadGetId());
+  
+  
+  
   Log_Info("BLETask Start");
 
   HAL_UART_Transmit(&huart2, (uint8_t*)"+++", 3, 100);
@@ -525,6 +598,88 @@ void BLETask(void *argument)
     osDelay(1000);
   }
   /* USER CODE END BLETask */
+}
+
+/* USER CODE BEGIN Header_DHT11Task */
+/**
+* @brief Function implementing the DHT11_Task thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_DHT11Task */
+void DHT11Task(void *argument)
+{
+  /* USER CODE BEGIN DHT11Task */
+  
+  osDelay(1000);
+  Log_Info("DHT11 Task Suspend");
+  osThreadSuspend(osThreadGetId());
+  
+  
+  float temperature = 0.0f;
+  float humidity = 0.0f;
+  uint8_t read_result = 0;
+  uint32_t read_count = 0;
+  uint16_t counter = 0;
+  
+  osDelay(2000);
+  Log_Info("DHT11Task Start");
+  
+  /* 初始化DWT延时 */
+  DWT_Init();
+  
+  /* 初始化DHT11 */
+  DHT11_Init();
+  
+  /* Infinite loop */
+  for(;;)
+  {
+    counter ++;
+    /* 等待任务通知或超时 */
+    uint32_t flags = osThreadFlagsWait(0x01, osFlagsWaitAny, 5000);  /* 等待5秒或任务通知 */
+    
+    Log_Debug("counter : %d",counter);
+    read_count++;
+    
+    /* 检查是否收到了任务通知 */
+    if (flags & 0x01) {
+      Log_Info("DHT11 triggered by task notification (attempt #%lu)", read_count);
+    } else {
+      Log_Info("DHT11 triggered by timeout (attempt #%lu)", read_count);
+    }
+    
+    /* 读取DHT11数据 */
+    read_result = DHT11_Read_Data(&temperature, &humidity);
+    
+    if (read_result == 0)
+    {
+      SensorData_UpdateTemperature(temperature);
+      SensorData_UpdateHumidity(humidity);
+    }
+    else
+    {
+      Log_Error("DHT11 read failed (attempt #%lu)", read_count);
+    }
+  }
+  /* USER CODE END DHT11Task */
+}
+
+/* USER CODE BEGIN Header_FLASHTask */
+/**
+* @brief Function implementing the FLASH_Task thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_FLASHTask */
+void FLASHTask(void *argument)
+{
+  /* USER CODE BEGIN FLASHTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END FLASHTask */
 }
 
 /* Private application code --------------------------------------------------*/

@@ -5,10 +5,11 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "cmsis_os.h"
-
+#include "bsp_dht11.h"
 /* External task handles for task notification */
 extern osThreadId_t g_PressureTaskHandle;
 extern osThreadId_t g_LCDTaskHandle;
+extern osThreadId_t g_DHT11TaskHandle;
 
 // 全局传感器数据
 GlobalSensorData_t g_sensor_data = {0};        // 全局传感器数据
@@ -313,7 +314,9 @@ bool Modbus_ProcessRequest(uint8_t* rx_buffer, uint16_t rx_length, uint8_t* tx_b
                             
                             if (g_LCDTaskHandle != NULL) {
                                 osThreadFlagsSet(g_LCDTaskHandle, 0x01);  /* 发送LCD任务通知 */
-//                                Log_Debug("Modbus: Sent LCD task notification");
+                                Log_Info("Modbus: Sent LCD task notification");
+                            } else {
+                                Log_Warn("Modbus: g_LCDTaskHandle is NULL");
                             }
                             
                             /* 等待一小段时间让压力任务完成读取 */
@@ -336,10 +339,29 @@ bool Modbus_ProcessRequest(uint8_t* rx_buffer, uint16_t rx_length, uint8_t* tx_b
                         reg_value = g_modbus_registers.pressure;
                         break;
                     case REG_TEMPERATURE_ADDR:
+                        // 发送任务通知触发DHT11采集和LCD刷新，然后读取全局变量
+                        {
+                            if (g_DHT11TaskHandle != NULL) {
+                                osThreadFlagsSet(g_DHT11TaskHandle, 0x01);  /* 发送DHT11任务通知 */
+                                Log_Info("Modbus: Sent DHT11 task notification");
+                            } else {
+                                Log_Warn("Modbus: g_DHT11TaskHandle is NULL");
+                            }
+                            
+                            if (g_LCDTaskHandle != NULL) {
+                                osThreadFlagsSet(g_LCDTaskHandle, 0x01);  /* 发送LCD任务通知 */
+                                Log_Info("Modbus: Sent LCD task notification");
+                            } else {
+                                Log_Warn("Modbus: g_LCDTaskHandle is NULL");
+                            }
+                            
+                            /* 等待一小段时间让DHT11任务完成读取 */
+                            osDelay(100);  /* 等待100ms */
+                        }
                         reg_value = g_modbus_registers.temperature;
                         break;
-                    case REG_STATUS_ADDR:
-                        reg_value = g_modbus_registers.status;
+                    case REG_ERROR_COUNT_ADDR:
+                        reg_value = g_modbus_registers.error_count;
                         break;
                     default:
                         reg_value = 0;
@@ -418,10 +440,37 @@ bool Modbus_ProcessRequest(uint8_t* rx_buffer, uint16_t rx_length, uint8_t* tx_b
                         reg_value = g_modbus_registers.pressure;
                         break;
                     case REG_TEMPERATURE_ADDR:
+                        // 发送任务通知触发DHT11采集和LCD刷新，然后读取全局变量
+                        {
+                            if (g_DHT11TaskHandle != NULL) {
+                                osThreadFlagsSet(g_DHT11TaskHandle, 0x01);  /* 发送DHT11任务通知 */
+                                Log_Info("Modbus: Sent DHT11 task notification");
+                            } else {
+                                Log_Warn("Modbus: g_DHT11TaskHandle is NULL");
+                            }
+                            
+                            if (g_LCDTaskHandle != NULL) {
+                                osThreadFlagsSet(g_LCDTaskHandle, 0x01);  /* 发送LCD任务通知 */
+                                Log_Info("Modbus: Sent LCD task notification");
+                            } else {
+                                Log_Warn("Modbus: g_LCDTaskHandle is NULL");
+                            }
+                            
+                            /* 等待一小段时间让dht11任务完成读取 */
+                            osDelay(100);  /* 等待100ms */
+                            
+                            /* 读取最新的全局温度值 */
+                            float temp_value = TemperatureSensor_GetLatestValue();
+                            
+                                // 将压力值*10000后存储到寄存器
+                                uint16_t temp_scaled = (uint16_t)(temp_value * 10000);
+                                g_modbus_registers.temperature = temp_scaled;
+                                Log_Info("Modbus: Temperature read via task notification: %.2f C, scaled: %d", temp_value, temp_scaled);
+                        }
                         reg_value = g_modbus_registers.temperature;
                         break;
-                    case REG_STATUS_ADDR:
-                        reg_value = g_modbus_registers.status;
+                    case REG_HUMIDITY_ADDR:
+                        reg_value = g_modbus_registers.humidity;
                         break;
                     default:
                         reg_value = 0;
@@ -485,19 +534,36 @@ void SensorData_UpdatePressure(double pressure_value)
  * @brief 更新温度传感器数据
  * @param temperature_value 温度值（°C）
  */
-void SensorData_UpdateTemperature(double temperature_value)
+void SensorData_UpdateTemperature(float temperature_value)
 {
-    g_sensor_data.temperature_value = temperature_value;
-    g_sensor_data.temperature_timestamp = HAL_GetTick();
+    g_sensor_data.temperature = temperature_value;
     g_sensor_data.temperature_valid = 1;
     
     // 同时更新Modbus寄存器
     int16_t temp_int = (int16_t)(temperature_value * 10);
-    g_sensor_data.temperature_value = (uint16_t)(temp_int + 400);
-    g_modbus_registers.temperature = g_sensor_data.temperature_value;
+    g_modbus_registers.temperature = temp_int;
     
-    Log_Info("Sensor data: Temperature updated to %.2f °C", temperature_value);
+    Log_Info("Sensor data: Temperature updated to %.2f C", temperature_value);
 }
+
+
+/**
+ * @brief 更新湿度传感器数据
+ * @param humidity_value 湿度值（%）
+ */
+void SensorData_UpdateHumidity(float humidity_value)
+{
+    g_sensor_data.humidity = humidity_value;
+    g_sensor_data.humidity_valid = 1;
+    
+    // 同时更新Modbus寄存器
+    int16_t humidity_int = (int16_t)(humidity_value * 10);
+    g_modbus_registers.humidity = humidity_int;
+    
+    Log_Info("Sensor data: Humidity updated to %.2f%% ", humidity_value);
+
+}
+
 
 /**
  * @brief 更新系统状态
@@ -514,6 +580,7 @@ void SensorData_UpdateSystemStatus(uint16_t status)
     Log_Info("Sensor data: System status updated to 0x%04X", status);
 }
 
+
 /**
  * @brief 更新错误计数
  * @param error_count 错误计数
@@ -529,22 +596,6 @@ void SensorData_UpdateErrorCount(uint16_t error_count)
     Log_Info("Sensor data: Error count updated to %d", error_count);
 }
 
-/**
- * @brief 更新通信状态
- * @param i2c_status I2C通信状态
- * @param uart_status UART通信状态
- * @param ble_status BLE连接状态
- */
-//void SensorData_UpdateCommunicationStatus(uint8_t i2c_status, uint8_t uart_status, uint8_t ble_status)
-//{
-//    g_sensor_data.i2c_status = i2c_status;
-//    g_sensor_data.uart_status = uart_status;
-//    g_sensor_data.ble_status = ble_status;
-//    g_sensor_data.system_timestamp = HAL_GetTick();
-//    
-//    Log_Info("Sensor data: Communication status updated - I2C:%d UART:%d BLE:%d", 
-//             i2c_status, uart_status, ble_status);
-//}
 
 /**
  * @brief 获取全局传感器数据指针

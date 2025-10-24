@@ -51,6 +51,8 @@
 "ex8\fonts.o"
 "ex8\modbus.o"
 "ex8\delay.o"
+"ex8\bsp_dht11.o"
+"ex8\bsp_dwt.o"
 --library_type=microlib --strict --scatter "EX8\EX8.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

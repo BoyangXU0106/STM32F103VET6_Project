@@ -429,7 +429,7 @@ static void ILI9341_REG_Config ( void )
  */
 void ILI9341_Init ( void )
 {
-	ILI9341_BackLed_Control ( ENABLE );      //点亮LCD背光灯
+	ILI9341_BackLed_Control ( DISABLE );      //点亮LCD背光灯
 	ILI9341_Rst ();
 	ILI9341_REG_Config ();
 	

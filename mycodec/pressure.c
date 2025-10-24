@@ -97,14 +97,16 @@ double PressureSensor_GetLatestValue(void)
     return g_sensor_data.pressure_value;
 }
 
-/**
- * @brief 获取压力值的时间戳
- * @return 时间戳（ms）
- */
-uint32_t PressureSensor_GetTimestamp(void)
-{
-    return g_sensor_data.pressure_timestamp;
-}
+
+
+///**
+// * @brief 获取压力值的时间戳
+// * @return 时间戳（ms）
+// */
+//uint32_t PressureSensor_GetTimestamp(void)
+//{
+//    return g_sensor_data.pressure_timestamp;
+//}
 
 /**
  * @brief 更新全局压力值

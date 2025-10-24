@@ -51,9 +51,13 @@ ex8\freertos.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 ex8\freertos.o: ../mycodeh/ble_data.h
 ex8\freertos.o: ../mycodeh/modbus.h
 ex8\freertos.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+ex8\freertos.o: ../mycodeh/delay.h
 ex8\freertos.o: ../mycodeh/bsp_ili9341_lcd.h
 ex8\freertos.o: ../mycodeh/fonts.h
 ex8\freertos.o: ../mycodeh/fonts.h
 ex8\freertos.o: ../mycodeh/bsp_xpt2046_lcd.h
 ex8\freertos.o: ../mycodeh/pressure.h
 ex8\freertos.o: ../Core/Inc/i2c.h
+ex8\freertos.o: ../mycodeh/bsp_dht11.h
+ex8\freertos.o: ../Core/Inc/tim.h
+ex8\freertos.o: ../mycodeh/bsp_dwt.h

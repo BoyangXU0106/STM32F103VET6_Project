@@ -51,3 +51,4 @@ ex8\modbus.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 ex8\modbus.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
 ex8\modbus.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 ex8\modbus.o: ../mycodeh/pressure.h
+ex8\modbus.o: ../mycodeh/bsp_dht11.h

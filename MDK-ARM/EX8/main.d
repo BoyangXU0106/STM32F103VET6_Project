@@ -55,3 +55,5 @@ ex8\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 ex8\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
 ex8\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 ex8\main.o: ../mycodeh/ble_data.h
+ex8\main.o: ../mycodeh/delay.h
+ex8\main.o: ../mycodeh/bsp_dwt.h

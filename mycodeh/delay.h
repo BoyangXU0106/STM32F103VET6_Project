@@ -51,10 +51,18 @@ extern "C" {
 /* USER CODE BEGIN EFP */
 
 /**
- * @brief 微秒级延时函数
+ * @brief 延时系统初始化
+ * @note 在系统启动时调用，启动TIM3定时器
+ * @note 建议在main函数中调用，确保延时函数正常工作
+ */
+void Delay_Init(void);
+
+/**
+ * @brief 微秒级延时函数（优化版本）
  * @param us 延时时间（微秒），范围：1-65535
- * @note 基于TIM3实现，精度为1微秒
+ * @note 基于持续运行的TIM3实现，精度为1微秒
  * @note 在单总线协议等需要精确时序的场合使用
+ * @note 优化特点：定时器持续运行，避免启停开销
  */
 void Delay_Us(uint16_t us);
 
