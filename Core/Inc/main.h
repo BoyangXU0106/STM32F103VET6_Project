@@ -61,6 +61,8 @@ void Error_Handler(void);
 #define XPT2046_MOSI_GPIO_Port GPIOE
 #define XPT2046_PENIRQ_Pin GPIO_PIN_4
 #define XPT2046_PENIRQ_GPIO_Port GPIOE
+#define FLASH_CS_Pin GPIO_PIN_0
+#define FLASH_CS_GPIO_Port GPIOC
 #define LED_G_Pin GPIO_PIN_0
 #define LED_G_GPIO_Port GPIOB
 #define LCD_BL_Pin GPIO_PIN_12
@@ -73,6 +75,7 @@ void Error_Handler(void);
 #define LCD_RST_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
+
 
 /* USER CODE END Private defines */
 

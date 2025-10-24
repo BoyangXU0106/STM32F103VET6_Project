@@ -28,6 +28,9 @@
 #include "log.h"
 #include "ble_data.h"
 #include "modbus.h"
+#include "flash.h"
+#include <stdlib.h>
+#include <stdio.h>
 #include "delay.h"
 #include "usart.h"
 #include "bsp_ili9341_lcd.h"
@@ -38,6 +41,7 @@
 #include "bsp_dht11.h"
 #include "tim.h"
 #include "bsp_dwt.h"
+#include "flash.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -117,7 +121,7 @@ const osThreadAttr_t DHT11_Task_attributes = {
 osThreadId_t FLASH_TaskHandle;
 const osThreadAttr_t FLASH_Task_attributes = {
   .name = "FLASH_Task",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for logQueue */
@@ -426,9 +430,9 @@ void Usart2Task(void *argument)
 void LCDTask(void *argument)
 {
   /* USER CODE BEGIN LCDTask */
-  osDelay(1000);
-  Log_Info("LCD Task Suspend");
-  osThreadSuspend(osThreadGetId());
+//  osDelay(1000);
+//  Log_Info("LCD Task Suspend");
+//  osThreadSuspend(osThreadGetId());
   
   
   
@@ -674,9 +678,110 @@ void DHT11Task(void *argument)
 void FLASHTask(void *argument)
 {
   /* USER CODE BEGIN FLASHTask */
+  osDelay(1000);
+  Log_Info("FLASH Task Suspend");
+  osThreadSuspend(osThreadGetId());
+  
+  
+  Log_Info("Flash Task: Starting...");
+  
+  /* 初始化Flash存储系统 */
+  Flash_TaskInit();
+  
+  /* 等待系统稳定 */
+  osDelay(2000);
+  
+  /* Flash系统初始化完成 */
+  Log_Info("Flash Task: System ready for sensor data storage");
+  
   /* Infinite loop */
   for(;;)
   {
+    /* 看门狗机制 - 记录任务开始时间 */
+    uint32_t task_start_time = osKernelGetTickCount();
+    
+    /* 处理Flash任务 */
+    Flash_TaskProcess();
+    
+    /* 检查任务执行时间，如果超过5秒则认为任务卡住 */
+    uint32_t task_duration = osKernelGetTickCount() - task_start_time;
+    if (task_duration > 5000) {
+      Log_Error("Flash Task: Task execution took %lu ms - possible hang detected!", task_duration);
+    }
+    
+    /* 每5秒存储一次传感器数据 */
+    static uint32_t last_store_time = 0;
+    uint32_t current_time = osKernelGetTickCount();
+    
+    if (current_time - last_store_time >= 5000) {
+      /* 获取全局传感器数据 */
+      GlobalSensorData_t* sensor_data = SensorData_GetGlobalData();
+      
+      /* 准备传感器数据用于存储 */
+      uint8_t sensor_data_bytes[sizeof(GlobalSensorData_t)];
+      memcpy(sensor_data_bytes, sensor_data, sizeof(GlobalSensorData_t));
+      
+      /* 存储传感器数据 */
+      uint32_t record_id;
+      FlashResult_t result = Flash_StoreData(sensor_data_bytes, sizeof(GlobalSensorData_t), &record_id);
+      
+      if (result == FLASH_OK) {
+        Log_Info("Flash Task: Stored sensor data with ID %lu", record_id);
+        
+        /* 立即读取验证数据一致性 */
+        ReadResult_t read_result;
+        result = Flash_ReadData(record_id, &read_result);
+        
+        if (result == FLASH_OK && read_result.valid) {
+          /* 比较存储和读取的数据 */
+          if (read_result.data_length == sizeof(GlobalSensorData_t)) {
+            GlobalSensorData_t* read_data = (GlobalSensorData_t*)read_result.data;
+            
+            /* 验证关键数据字段 */
+            int data_match = 1;
+            if (sensor_data->pressure_value != read_data->pressure_value) {
+              Log_Error("Flash Task: Pressure value mismatch! Stored: %.6f, Read: %.6f", 
+                       sensor_data->pressure_value, read_data->pressure_value);
+              data_match = 0;
+            }
+            if (sensor_data->temperature != read_data->temperature) {
+              Log_Error("Flash Task: Temperature value mismatch! Stored: %.2f, Read: %.2f", 
+                       sensor_data->temperature, read_data->temperature);
+              data_match = 0;
+            }
+            if (sensor_data->humidity != read_data->humidity) {
+              Log_Error("Flash Task: Humidity value mismatch! Stored: %.2f, Read: %.2f", 
+                       sensor_data->humidity, read_data->humidity);
+              data_match = 0;
+            }
+            if (sensor_data->system_status != read_data->system_status) {
+              Log_Error("Flash Task: System status mismatch! Stored: 0x%04X, Read: 0x%04X", 
+                       sensor_data->system_status, read_data->system_status);
+              data_match = 0;
+            }
+            
+            if (data_match) {
+              Log_Info("Flash Task: Data verification PASSED - All sensor data matches");
+              Log_Info("Flash Task: P:%.6f T:%.2f H:%.2f S:0x%04X", 
+                      sensor_data->pressure_value, sensor_data->temperature, 
+                      sensor_data->humidity, sensor_data->system_status);
+            } else {
+              Log_Error("Flash Task: Data verification FAILED - Data mismatch detected");
+            }
+          } else {
+            Log_Error("Flash Task: Data length mismatch! Expected: %lu, Read: %lu", 
+                     sizeof(GlobalSensorData_t), read_result.data_length);
+          }
+        } else {
+          Log_Error("Flash Task: Failed to read stored data for verification");
+        }
+      } else {
+        Log_Error("Flash Task: Failed to store sensor data, error %d", result);
+      }
+      
+      last_store_time = current_time;
+    }
+    
     osDelay(1);
   }
   /* USER CODE END FLASHTask */

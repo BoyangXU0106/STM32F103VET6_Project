@@ -51,6 +51,8 @@ ex8\freertos.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 ex8\freertos.o: ../mycodeh/ble_data.h
 ex8\freertos.o: ../mycodeh/modbus.h
 ex8\freertos.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+ex8\freertos.o: ../mycodeh/flash.h
+ex8\freertos.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 ex8\freertos.o: ../mycodeh/delay.h
 ex8\freertos.o: ../mycodeh/bsp_ili9341_lcd.h
 ex8\freertos.o: ../mycodeh/fonts.h

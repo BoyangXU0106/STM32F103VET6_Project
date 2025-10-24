@@ -1240,6 +1240,11 @@
               <FileType>1</FileType>
               <FilePath>..\mycodec\bsp_dwt.c</FilePath>
             </File>
+            <File>
+              <FileName>flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\mycodec\flash.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
